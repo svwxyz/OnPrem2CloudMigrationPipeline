@@ -1,0 +1,6 @@
+{
+	"name": "On-prem2",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

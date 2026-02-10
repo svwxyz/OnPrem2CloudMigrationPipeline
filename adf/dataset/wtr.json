@@ -1,0 +1,32 @@
+{
+	"name": "wtr",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "table_name",
+				"type": "varchar"
+			},
+			{
+				"name": "last_uploaded",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "last_updated",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "wtr"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,9 @@
+{
+	"name": "sv-adf-one",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "3fb7c65f-8b12-4e71-9c9f-87551facaf2c",
+		"tenantId": "2b5f9607-4c2a-41a9-b6f8-76ab2df7c53b"
+	}
+}

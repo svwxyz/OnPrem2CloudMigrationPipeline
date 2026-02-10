@@ -1,0 +1,228 @@
+{
+	"name": "Migration",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "wtrDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "SELECT *\nFROM @{pipeline().parameters.schema_src}.@{pipeline().parameters.table_src}\nWHERE @{pipeline().parameters.maxColumn} >\n      CAST(\n          CAST(\n              '@{activity('wtrDate').output.firstRow.last_uploaded}'\n              AS datetimeoffset\n          )\n          AS datetime2\n      )\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "localTbl",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": {
+								"value": "@pipeline().parameters.schema_src",
+								"type": "Expression"
+							},
+							"table": {
+								"value": "@pipeline().parameters.table_src",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AzureSqlTable1",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": {
+								"value": "@pipeline().parameters.schema_sink",
+								"type": "Expression"
+							},
+							"table": {
+								"value": "@pipeline().parameters.table_sink",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "current_Date",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Copy data1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select coalesce(max(@{pipeline().parameters.maxColumn}),'1900-01-01T00:00:00.0000000') as Maxcur\nfrom @{pipeline().parameters.schema_sink}.@{pipeline().parameters.table_sink}",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzureSqlTable1",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": {
+								"value": "@pipeline().parameters.schema_sink",
+								"type": "Expression"
+							},
+							"table": {
+								"value": "@pipeline().parameters.table_sink",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "wtrDate",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select last_uploaded\nfrom dbo.wtr\nwhere table_name = '@{pipeline().parameters.table_src}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "wtr",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": true
+				}
+			},
+			{
+				"name": "Stored procedure1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "current_Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[updatingwtr]",
+					"storedProcedureParameters": {
+						"maxDate": {
+							"value": {
+								"value": "@activity('current_Date').output.value[0].Maxcur",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"tblename": {
+							"value": {
+								"value": "@pipeline().parameters.table_sink",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"table_src": {
+				"type": "string",
+				"defaultValue": "customer"
+			},
+			"schema_src": {
+				"type": "string",
+				"defaultValue": "dbo"
+			},
+			"table_sink": {
+				"type": "string",
+				"defaultValue": "customer"
+			},
+			"schema_sink": {
+				"type": "string",
+				"defaultValue": "hub"
+			},
+			"maxColumn": {
+				"type": "String",
+				"defaultValue": "created_at"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-02-10T16:26:45Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
